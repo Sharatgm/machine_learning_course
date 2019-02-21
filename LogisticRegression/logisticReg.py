@@ -5,9 +5,8 @@ from random import randrange
 from csv import reader
 from math import exp
 
-
-# Load a CSV file
 def load_csv(filename):
+	# Load a CSV file
 	dataset = list()
 	with open(filename, 'r') as file:
 		csv_reader = reader(file)
@@ -17,12 +16,7 @@ def load_csv(filename):
 			dataset.append([float(item) for item in row])
 	return dataset
 
-# Convert string column to float
-def str_column_to_float(dataset, column):
-	for row in dataset:
-		row[column] = float(row[column].strip())
-
-def get_maxmin(dataset):
+def get_minmax(dataset):
 	# Find the min and max values for each column
 	minmax = list()
 	for i in range(len(dataset[0])):
@@ -39,8 +33,8 @@ def maxmin_scaling(dataset):
 		for i in range(len(row)):
 			row[i] = (row[i] - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
 
-# Split a dataset into k folds
 def cross_validation_split(dataset, n_folds):
+	# Split a dataset into k folds
 	dataset_split = list()
 	dataset_copy = list(dataset)
 	fold_size = int(len(dataset) / n_folds)
@@ -52,16 +46,16 @@ def cross_validation_split(dataset, n_folds):
 		dataset_split.append(fold)
 	return dataset_split
 
-# Calculate accuracy percentage
 def accuracy_metric(actual, predicted):
+	# Calculate accuracy percentage
 	correct = 0
 	for i in range(len(actual)):
 		if actual[i] == predicted[i]:
 			correct += 1
 	return correct / float(len(actual)) * 100.0
 
-# Evaluate an algorithm using a cross validation split
 def evaluate_algorithm(dataset, algorithm, n_folds, *args):
+	# Evaluate an algorithm using a cross validation split
 	folds = cross_validation_split(dataset, n_folds)
 	scores = list()
 	for fold in folds:
@@ -79,34 +73,34 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
 		scores.append(accuracy)
 	return scores
 
-# Make a prediction with coefficients
-def predict(row, coefficients):
+def hypothesis(row, coefficients):
+	# Make a prediction with coefficients
 	yhat = coefficients[0]
 	for i in range(len(row)-1):
 		yhat += coefficients[i + 1] * row[i]
 	return 1.0 / (1.0 + exp(-yhat))
 
-# Estimate logistic regression coefficients using stochastic gradient descent
-def coefficients_sgd(train, l_rate, n_epoch):
-	coef = [0.0 for i in range(len(train[0]))]
+def stochastic_gradient_descent(train, l_rate, n_epoch):
+	# Estimate logistic regression coefficients using stochastic gradient descent
+	params = [0.0 for i in range(len(train[0]))]
 	for epoch in range(n_epoch):
 		sum_error = 0
 		for row in train:
-			yhat = predict(row, coef)
-			error = row[-1] - yhat
+			predicted = hypothesis(row, params)
+			error = row[-1] - predicted
 			sum_error += error**2
-			coef[0] = coef[0] + l_rate * error * yhat * (1.0 - yhat)
+			params[0] = params[0] + l_rate * error * yhat * (1.0 - yhat)
 			for i in range(len(row)-1):
-				coef[i + 1] = coef[i + 1] + l_rate * error * yhat * (1.0 - yhat) * row[i]
+				params[i + 1] = params[i + 1] + l_rate * error * yhat * (1.0 - yhat) * row[i]
 		print('>epoch=%d, lrate=%.3f, error=%.3f' % (epoch, l_rate, sum_error))
-	return coef
+	return params
 
 # Linear Regression Algorithm With Stochastic Gradient Descent
 def logistic_regression(train, test, l_rate, n_epoch):
 	predictions = list()
-	coef = coefficients_sgd(train, l_rate, n_epoch)
+	params = stochastic_gradient_descent(train, l_rate, n_epoch)
 	for row in test:
-		yhat = predict(row, coef)
+		yhat = hypothesis(row, params)
 		yhat = round(yhat)
 		predictions.append(yhat)
 	return(predictions)
@@ -122,29 +116,24 @@ dataset = [[2.7810836,2.550537003,0],
 	[6.922596716,1.77106367,1],
 	[8.675418651,-0.242068655,1],
 	[7.673756466,3.508563011,1]]
-coef = [-0.406605464, 0.852573316, -1.104746259]
+params = [-0.406605464, 0.852573316, -1.104746259]
 
 def test_small_data_set():
 	l_rate = 0.3
 	n_epoch = 100
-	coef = coefficients_sgd(dataset, l_rate, n_epoch)
-	print(coef)
+	params = stochastic_gradient_descent(dataset, l_rate, n_epoch)
+	print(params)
 
 def main() :
-	# test_small_data_set()
-	# Test the logistic regression algorithm on the diabetes dataset
-	seed(1)
 	# load and prepare data
 	filename = 'pima-indians-diabetes.csv'
 	dataset = load_csv(filename)
-	for i in range(len(dataset[0])):
-		str_column_to_float(dataset, i)
 	# normalize
-	maxmin_scaling(dataset, minmax)
+	maxmin_scaling(dataset)
 	# evaluate algorithm
 	n_folds = 5
 	l_rate = 0.1
-	n_epoch = 100
+	n_epoch = 1
 	scores = evaluate_algorithm(dataset, logistic_regression, n_folds, l_rate, n_epoch)
 	print('Scores: %s' % scores)
 	print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
