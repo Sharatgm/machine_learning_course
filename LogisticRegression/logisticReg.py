@@ -3,7 +3,7 @@ from random import randrange
 from csv import reader
 import math
 import numpy
-import matplotlib.pyplot as plt  #use this to generate a graph of the errors/loss so we can see whats going on (diagnostics)
+import matplotlib.pyplot as plt
 
 
 cost = []
@@ -42,24 +42,8 @@ def get_minmax(dataset):
 		minmax.append([value_min, value_max])
 	return minmax
 
-def mean_scaling(dataset):
-	# Scales the dataset received
-	# This distribution will have values between -1 and 1
-	acum =0
-	dataset = numpy.asarray(dataset).T.tolist()
-	for i in range(1,len(dataset)):
-		for j in range(len(dataset[i])):
-			acum=+ dataset[i][j]
-		avg = acum/(len(dataset[i]))
-		maxV = max(dataset[i])
-		minV = min(dataset[i])
-		print("avg %f" % avg)
-		for j in range(len(dataset[i])):
-			dataset[i][j] = round((dataset[i][j] - avg)/maxV, 6)  #Mean scaling?
-	return numpy.asarray(dataset).T.tolist()
-
 def standarization_scaling(dataset):
-	# Scales the dataset received
+	# Standarization: Scales the dataset received if it has a normal distribution
 	acum =0
 	dataset = numpy.asarray(dataset).T.tolist()
 	for i in range(1,len(dataset)):
@@ -72,7 +56,7 @@ def standarization_scaling(dataset):
 	return numpy.asarray(dataset).T.tolist()
 
 def maxmin_scaling(dataset):
-	# This scaling brings the value between 0 and 1.
+	# Normalization: This scaling brings the value between 0 and 1.
 	minmax = [[0, 1.0]]
 	minmax += get_minmax(dataset)
 	print(minmax)
@@ -124,7 +108,18 @@ def cross_entropy(dataset, params, y):
 def main():
 	s = True
 
-	filename = 'pima-indians-diabetes.csv'
+	""" Prima indians diabetes """
+	#filename = 'pima-indians-diabetes.csv'
+
+	""" Titanic prediction:
+			pclass -> socieconomic status
+			sex -> 0 (male), 1 (female)
+			age
+			passenger fare
+			port of embarkation -> 0 = Cherbourg, 1 = Queenstown, 2 = Southampton
+			survived """
+	filename = 'titanic/train.csv'
+
 	# Load csv file
 	dataset = load_csv(filename)
 
@@ -150,7 +145,7 @@ def main():
 		error = cross_entropy(dataset, params, y)
 		epochs += 1
 		#print("EPOCH = ", epochs)
-		if (error < 0.00001 or prev == params or epochs == 1000):
+		if (error < 0.001 or prev == params or epochs == 5000):
 			keepTrying = False
 	#print("Final params:")
 	#print(params)
