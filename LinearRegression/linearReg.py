@@ -96,7 +96,7 @@ def gradient_descent(dataset, alfa, params, y):
 		#print(newParams)
 	return newParams
 
-def calculate_errors(dataset, params, y):
+def cost_function(dataset, params, y):
 	sum = 0
 	for i in range(len(dataset)):
 		hyp = hypothesis(dataset[i], params)
@@ -154,7 +154,7 @@ def main():
 	while(keepTrying):
 		oldparams = list(params)
 		params = gradient_descent(dataset, alfa, params, y)
-		error = calculate_errors(dataset, params, y)
+		error = cost_function(dataset, params, y)
 		epochs += 1
 		#print("EPOCH = ", epochs)
 		if (error < 0.00001 or oldparams == params or epochs == 1000):

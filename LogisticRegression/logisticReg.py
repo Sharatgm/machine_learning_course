@@ -1,142 +1,161 @@
-
-# Logistic Regression on Diabetes Dataset
 from random import seed
 from random import randrange
 from csv import reader
-from math import exp
+import math
+import numpy
+import matplotlib.pyplot as plt  #use this to generate a graph of the errors/loss so we can see whats going on (diagnostics)
 
+
+cost = []
+# Load a CSV file
 def load_csv(filename):
-	# Load a CSV file
+	# Opens a csv file and saves each row in a list with the value of b added (1)
 	dataset = list()
 	with open(filename, 'r') as file:
-		csv_reader = reader(file)
-		for row in csv_reader:
+		csv_data = reader(file)
+		for row in csv_data:
 			if not row:
 				continue
-			dataset.append([float(item) for item in row])
+			dataset.append([1] + [float(item) for item in row])
 	return dataset
+
+def separate_y(dataset):
+	# Separates the last column (y values) in a new list
+	y = list()
+	for i in range(len(dataset)):
+		y.append(dataset[i].pop())
+	return dataset, y
+
+def standard_deviation(data, avg):
+	sum = 0
+	for i in range(len(data)):
+		sum += (data[i] - avg)**2
+	return sum/len(data)
 
 def get_minmax(dataset):
 	# Find the min and max values for each column
 	minmax = list()
-	for i in range(len(dataset[0])):
+	for i in range(1,len(dataset[0])):
 		col_values = [row[i] for row in dataset]
 		value_min = min(col_values)
 		value_max = max(col_values)
 		minmax.append([value_min, value_max])
 	return minmax
 
+def mean_scaling(dataset):
+	# Scales the dataset received
+	# This distribution will have values between -1 and 1
+	acum =0
+	dataset = numpy.asarray(dataset).T.tolist()
+	for i in range(1,len(dataset)):
+		for j in range(len(dataset[i])):
+			acum=+ dataset[i][j]
+		avg = acum/(len(dataset[i]))
+		maxV = max(dataset[i])
+		minV = min(dataset[i])
+		print("avg %f" % avg)
+		for j in range(len(dataset[i])):
+			dataset[i][j] = round((dataset[i][j] - avg)/maxV, 6)  #Mean scaling?
+	return numpy.asarray(dataset).T.tolist()
+
+def standarization_scaling(dataset):
+	# Scales the dataset received
+	acum =0
+	dataset = numpy.asarray(dataset).T.tolist()
+	for i in range(1,len(dataset)):
+		for j in range(len(dataset[i])):
+			acum=+ dataset[i][j]
+		avg = acum/(len(dataset[i]))
+		sd = standard_deviation(dataset[i], avg)
+		for j in range(len(dataset[i])):
+			dataset[i][j] = round((dataset[i][j] - avg)/sd, 6)  #Mean scaling
+	return numpy.asarray(dataset).T.tolist()
+
 def maxmin_scaling(dataset):
 	# This scaling brings the value between 0 and 1.
-	minmax = get_minmax(dataset)
-	for row in dataset:
-		for i in range(len(row)):
-			row[i] = (row[i] - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
+	minmax = [[0, 1.0]]
+	minmax += get_minmax(dataset)
+	print(minmax)
+	acum =0
+	dataset = numpy.asarray(dataset).T.tolist()
+	for i in range(1,len(dataset)):
+		for j in range(len(dataset[i])):
+			dataset[i][j] = round((dataset[i][j] - minmax[i][0])/  (minmax[i][1] - minmax[i][0]), 6)
+	return numpy.asarray(dataset).T.tolist()
 
-def cross_validation_split(dataset, n_folds):
-	# Split a dataset into k folds
-	dataset_split = list()
-	dataset_copy = list(dataset)
-	fold_size = int(len(dataset) / n_folds)
-	for i in range(n_folds):
-		fold = list()
-		while len(fold) < fold_size:
-			index = randrange(len(dataset_copy))
-			fold.append(dataset_copy.pop(index))
-		dataset_split.append(fold)
-	return dataset_split
+def hypothesis(data, params):
+	sum = 0
+	for i in range(len(params)):
+		sum += params[i] * data[i]
+	return 1 / (1 + math.exp((-1) * sum))
 
-def accuracy_metric(actual, predicted):
-	# Calculate accuracy percentage
-	correct = 0
-	for i in range(len(actual)):
-		if actual[i] == predicted[i]:
-			correct += 1
-	return correct / float(len(actual)) * 100.0
+def stochastic_gradient_descent(dataset, alfa, params, y):
+	newParams = list(params)
+	for i in range(len(params)):
+		sum = 0
+		for j in range(len(dataset)):
+			prediction = hypothesis(dataset[j], params)
+			sum = sum + (prediction - y[j]) * dataset[j][i]
+		# Update
+		newParams[i] = params[i] - alfa * (1 / len(dataset)) * sum
+		#print(newParams)
+	return newParams
 
-def evaluate_algorithm(dataset, algorithm, n_folds, *args):
-	# Evaluate an algorithm using a cross validation split
-	folds = cross_validation_split(dataset, n_folds)
-	scores = list()
-	for fold in folds:
-		train_set = list(folds)
-		train_set.remove(fold)
-		train_set = sum(train_set, [])
-		test_set = list()
-		for row in fold:
-			row_copy = list(row)
-			test_set.append(row_copy)
-			row_copy[-1] = None
-		predicted = algorithm(train_set, test_set, *args)
-		actual = [row[-1] for row in fold]
-		accuracy = accuracy_metric(actual, predicted)
-		scores.append(accuracy)
-	return scores
+def cross_entropy(dataset, params, y):
+	sum = 0
+	for i  in range(len(dataset)):
+		prediction = hypothesis(dataset[i], params)
+		if y[i] == 1:
+			if (prediction == 0):
+				prediction = 0.00001
+			# -log (h(xi))
+			error = math.log(prediction) * -1
+		else:
+			if(prediction == 1):
+				prediction = 0.99999
+			# -log (1 - h(xi))
+			error = math.log(1-prediction) * -1
+		sum = sum + error
+	c = sum / len(dataset)
+	print("Error: ", c)
+	cost.append(c)
+	return c
 
-def hypothesis(row, coefficients):
-	# Make a prediction with coefficients
-	yhat = coefficients[0]
-	for i in range(len(row)-1):
-		yhat += coefficients[i + 1] * row[i]
-	return 1.0 / (1.0 + exp(-yhat))
+def main():
+	s = True
 
-def stochastic_gradient_descent(train, l_rate, n_epoch):
-	# Estimate logistic regression coefficients using stochastic gradient descent
-	params = [0.0 for i in range(len(train[0]))]
-	for epoch in range(n_epoch):
-		sum_error = 0
-		for row in train:
-			predicted = hypothesis(row, params)
-			error = row[-1] - predicted
-			sum_error += error**2
-			params[0] = params[0] + l_rate * error * yhat * (1.0 - yhat)
-			for i in range(len(row)-1):
-				params[i + 1] = params[i + 1] + l_rate * error * yhat * (1.0 - yhat) * row[i]
-		print('>epoch=%d, lrate=%.3f, error=%.3f' % (epoch, l_rate, sum_error))
-	return params
-
-# Linear Regression Algorithm With Stochastic Gradient Descent
-def logistic_regression(train, test, l_rate, n_epoch):
-	predictions = list()
-	params = stochastic_gradient_descent(train, l_rate, n_epoch)
-	for row in test:
-		yhat = hypothesis(row, params)
-		yhat = round(yhat)
-		predictions.append(yhat)
-	return(predictions)
-
-# test predictions
-dataset = [[2.7810836,2.550537003,0],
-	[1.465489372,2.362125076,0],
-	[3.396561688,4.400293529,0],
-	[1.38807019,1.850220317,0],
-	[3.06407232,3.005305973,0],
-	[7.627531214,2.759262235,1],
-	[5.332441248,2.088626775,1],
-	[6.922596716,1.77106367,1],
-	[8.675418651,-0.242068655,1],
-	[7.673756466,3.508563011,1]]
-params = [-0.406605464, 0.852573316, -1.104746259]
-
-def test_small_data_set():
-	l_rate = 0.3
-	n_epoch = 100
-	params = stochastic_gradient_descent(dataset, l_rate, n_epoch)
-	print(params)
-
-def main() :
-	# load and prepare data
 	filename = 'pima-indians-diabetes.csv'
+	# Load csv file
 	dataset = load_csv(filename)
-	# normalize
-	maxmin_scaling(dataset)
-	# evaluate algorithm
-	n_folds = 5
-	l_rate = 0.1
-	n_epoch = 1
-	scores = evaluate_algorithm(dataset, logistic_regression, n_folds, l_rate, n_epoch)
-	print('Scores: %s' % scores)
-	print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
+
+	# Separate last column (y)
+	dataset,y = separate_y(dataset)
+
+	# Initialize params = 0
+	params = [0 for i in range(len(dataset[0]))]
+
+	# If scale = True, scale the data
+	if s:
+		dataset = maxmin_scaling(dataset)
+
+	# Define old params, epochs and alfa
+	oldparams = list()
+	epochs = 0
+	alfa = 0.3
+
+	keepTrying = True
+	while(keepTrying):
+		prev = list(params)
+		params = stochastic_gradient_descent(dataset, alfa, params, y)
+		error = cross_entropy(dataset, params, y)
+		epochs += 1
+		#print("EPOCH = ", epochs)
+		if (error < 0.00001 or prev == params or epochs == 1000):
+			keepTrying = False
+	#print("Final params:")
+	#print(params)
+	plt.plot(cost)
+	plt.show()
 
 if __name__ == "__main__":
     main()
