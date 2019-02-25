@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 
 cost = []
+accuracy = []
 # Load a CSV file
 def load_csv(filename):
 	# Opens a csv file and saves each row in a list with the value of b added (1)
@@ -18,6 +19,13 @@ def load_csv(filename):
 				continue
 			dataset.append([1] + [float(item) for item in row])
 	return dataset
+
+def accuracy_metric(actual, predicted):
+	correct = 0
+	for i in range(len(actual)):
+		if actual[i] == predicted[i]:
+			correct += 1
+	return correct / float(len(actual)) * 100.0
 
 def separate_y(dataset):
 	# Separates the last column (y values) in a new list
@@ -42,8 +50,9 @@ def get_minmax(dataset):
 		minmax.append([value_min, value_max])
 	return minmax
 
-def standarization_scaling(dataset):
-	# Standarization: Scales the dataset received if it has a normal distribution
+def standardization_scaling(dataset):
+	# Standardization: Scales the dataset received
+	#to have a mean = 0 and a standardDeviation = 1
 	acum =0
 	dataset = numpy.asarray(dataset).T.tolist()
 	for i in range(1,len(dataset)):
@@ -52,7 +61,7 @@ def standarization_scaling(dataset):
 		avg = acum/(len(dataset[i]))
 		sd = standard_deviation(dataset[i], avg)
 		for j in range(len(dataset[i])):
-			dataset[i][j] = round((dataset[i][j] - avg)/sd, 6)  #Mean scaling
+			dataset[i][j] = round((dataset[i][j] - avg)/sd, 6)
 	return numpy.asarray(dataset).T.tolist()
 
 def maxmin_scaling(dataset):
@@ -64,7 +73,8 @@ def maxmin_scaling(dataset):
 	dataset = numpy.asarray(dataset).T.tolist()
 	for i in range(1,len(dataset)):
 		for j in range(len(dataset[i])):
-			dataset[i][j] = round((dataset[i][j] - minmax[i][0])/  (minmax[i][1] - minmax[i][0]), 6)
+			dataset[i][j] = round((dataset[i][j] - minmax[i][0])/
+							(minmax[i][1] - minmax[i][0]), 6)
 	return numpy.asarray(dataset).T.tolist()
 
 def hypothesis(data, params):
@@ -136,7 +146,7 @@ def main():
 	# Define old params, epochs and alfa
 	oldparams = list()
 	epochs = 0
-	alfa = 0.3
+	alfa = 0.03
 
 	keepTrying = True
 	while(keepTrying):
@@ -145,10 +155,10 @@ def main():
 		error = cross_entropy(dataset, params, y)
 		epochs += 1
 		#print("EPOCH = ", epochs)
-		if (error < 0.001 or prev == params or epochs == 5000):
+		if (error < 0.001 or prev == params or epochs == 10000):
 			keepTrying = False
-	#print("Final params:")
-	#print(params)
+	print("Final params:")
+	print(params)
 	plt.plot(cost)
 	plt.show()
 
