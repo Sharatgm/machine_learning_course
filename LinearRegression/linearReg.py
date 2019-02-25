@@ -35,7 +35,7 @@ def standard_deviation(data, avg):
 def get_minmax(dataset):
 	# Find the min and max values for each column
 	minmax = list()
-	for i in range(len(dataset[0])):
+	for i in range(1,len(dataset[0])):
 		col_values = [row[i] for row in dataset]
 		value_min = min(col_values)
 		value_max = max(col_values)
@@ -58,26 +58,32 @@ def mean_scaling(dataset):
 			dataset[i][j] = round((dataset[i][j] - avg)/maxV, 6)  #Mean scaling?
 	return numpy.asarray(dataset).T.tolist()
 
-def standarization_scaling(dataset):
-	# Scales the dataset received
+def standardization_scaling(dataset):
+	# Standardization: Scales the dataset received
+	#to have a mean = 0 and a standardDeviation = 1
 	acum =0
 	dataset = numpy.asarray(dataset).T.tolist()
 	for i in range(1,len(dataset)):
 		for j in range(len(dataset[i])):
 			acum=+ dataset[i][j]
 		avg = acum/(len(dataset[i]))
-		print("avg %f" % avg)
-		sd = standardDeviation(dataset[i], avg)
+		sd = standard_deviation(dataset[i], avg)
 		for j in range(len(dataset[i])):
-			dataset[i][j] = round((dataset[i][j] - avg)/sd, 6)  #Mean scaling
+			dataset[i][j] = round((dataset[i][j] - avg)/sd, 6)
 	return numpy.asarray(dataset).T.tolist()
 
 def maxmin_scaling(dataset):
-	# This scaling brings the value between 0 and 1.
-	minmax = get_minmax(dataset)
-	for row in dataset:
-		for i in range(len(row)):
-			row[i] = (row[i] - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
+	# Normalization: This scaling brings the value between 0 and 1.
+	minmax = [[0, 1.0]]
+	minmax += get_minmax(dataset)
+	print(minmax)
+	acum =0
+	dataset = numpy.asarray(dataset).T.tolist()
+	for i in range(1,len(dataset)):
+		for j in range(len(dataset[i])):
+			dataset[i][j] = round((dataset[i][j] - minmax[i][0])/
+							(minmax[i][1] - minmax[i][0]), 6)
+	return numpy.asarray(dataset).T.tolist()
 
 def hypothesis(data, params):
 	sum = 0
@@ -100,7 +106,7 @@ def cost_function(dataset, params, y):
 	sum = 0
 	for i in range(len(dataset)):
 		hyp = hypothesis(dataset[i], params)
-		#print("Predicted: ", hyp, "\t Real: ", y[i])
+		print("Predicted: ", hyp, "\t Real: ", y[i])
 		sum = sum + (hyp - y[i]) ** 2
 	c = sum / len(dataset)
 	print("Error: ", c)
@@ -118,8 +124,7 @@ def main():
 	#filename = 'bodyWeight_data.csv'
 
 	""" admision_data details:
-		GRE
-		Score
+		GRE Score
 		TOEFL Score
 		University Rating
 		SOP
@@ -136,10 +141,8 @@ def main():
 
 	# Initialize params = 0
 	params = [0 for i in range(len(dataset[0]))]
-	print(dataset)
-	#params = [0,0,0]
-	#dataset = [[1,1,1],[1,2,2],[1,3,3],[1,4,4],[1,5,5]]
-	#y = [2,4,6,8,10]
+	#print(dataset)
+
 	# If scale = True, scale the data
 	if s:
 		dataset = mean_scaling(dataset)
@@ -161,8 +164,17 @@ def main():
 			keepTrying = False
 	print("Final params:")
 	print(params)
-	plt.plot(cost)
-	plt.show()
+	#plt.plot(cost)
+	#plt.show()
 
+	print("Test:")
+	student = [[1,337,118,4,4.5,4.5,9.65,1]]
+	student = maxmin_scaling(student)
+	prediction = hypothesis(student[0], params)
+
+	print("Student a:")
+	print(student)
+
+	print(prediction)
 if __name__ == "__main__":
     main()

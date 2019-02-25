@@ -1,6 +1,6 @@
 from random import seed
 from random import randrange
-from csv import reader
+import csv
 import math
 import numpy
 import matplotlib.pyplot as plt
@@ -9,23 +9,19 @@ import matplotlib.pyplot as plt
 cost = []
 accuracy = []
 # Load a CSV file
-def load_csv(filename):
+def load_csv(filename, addBias):
 	# Opens a csv file and saves each row in a list with the value of b added (1)
 	dataset = list()
 	with open(filename, 'r') as file:
-		csv_data = reader(file)
+		csv_data = csv.reader(file)
 		for row in csv_data:
 			if not row:
 				continue
-			dataset.append([1] + [float(item) for item in row])
+			if addBias:
+				dataset.append([1] + [float(item) for item in row])
+			else:
+				dataset.append([float(item) for item in row])
 	return dataset
-
-def accuracy_metric(actual, predicted):
-	correct = 0
-	for i in range(len(actual)):
-		if actual[i] == predicted[i]:
-			correct += 1
-	return correct / float(len(actual)) * 100.0
 
 def separate_y(dataset):
 	# Separates the last column (y values) in a new list
@@ -77,23 +73,23 @@ def maxmin_scaling(dataset):
 							(minmax[i][1] - minmax[i][0]), 6)
 	return numpy.asarray(dataset).T.tolist()
 
-def hypothesis(data, params):
-	sum = 0
-	for i in range(len(params)):
-		sum += params[i] * data[i]
-	return 1 / (1 + math.exp((-1) * sum))
+def hypothesis(data, coefficients):
+	yhat = 0
+	for i in range(len(coefficients)):
+		yhat += coefficients[i] * data[i]
+	return 1.0 / (1.0 + math.exp(-yhat))
 
-def stochastic_gradient_descent(dataset, alfa, params, y):
-	newParams = list(params)
-	for i in range(len(params)):
+def stochastic_gradient_descent(dataset, alfa, coefficients, y):
+	newCoef = list(coefficients)
+	for i in range(len(coefficients)):
 		sum = 0
 		for j in range(len(dataset)):
-			prediction = hypothesis(dataset[j], params)
+			prediction = hypothesis(dataset[j], coefficients)
 			sum = sum + (prediction - y[j]) * dataset[j][i]
 		# Update
-		newParams[i] = params[i] - alfa * (1 / len(dataset)) * sum
+		newCoef[i] = coefficients[i] - alfa * (1 / len(dataset)) * sum
 		#print(newParams)
-	return newParams
+	return newCoef
 
 def cross_entropy(dataset, params, y):
 	sum = 0
@@ -117,10 +113,6 @@ def cross_entropy(dataset, params, y):
 
 def main():
 	s = True
-
-	""" Prima indians diabetes """
-	#filename = 'pima-indians-diabetes.csv'
-
 	""" Titanic prediction:
 			pclass -> socieconomic status
 			sex -> 0 (male), 1 (female)
@@ -131,36 +123,55 @@ def main():
 	filename = 'titanic/train.csv'
 
 	# Load csv file
-	dataset = load_csv(filename)
+	dataset = load_csv(filename, True)
 
 	# Separate last column (y)
 	dataset,y = separate_y(dataset)
 
 	# Initialize params = 0
-	params = [0 for i in range(len(dataset[0]))]
+	coefficients = [0.0 for i in range(len(dataset[0]))]
 
 	# If scale = True, scale the data
 	if s:
-		dataset = maxmin_scaling(dataset)
+		dataset = standardization_scaling(dataset)
 
-	# Define old params, epochs and alfa
-	oldparams = list()
-	epochs = 0
-	alfa = 0.03
+	# Define epochs and alfa
+	n_epoch = 100000
+	alfa = 0.3
 
-	keepTrying = True
-	while(keepTrying):
-		prev = list(params)
-		params = stochastic_gradient_descent(dataset, alfa, params, y)
-		error = cross_entropy(dataset, params, y)
-		epochs += 1
+	for epoch in range(n_epoch):
+		temp = list(coefficients)
+		coefficients = stochastic_gradient_descent(dataset, alfa, coefficients, y)
+		error = cross_entropy(dataset, coefficients, y)
 		#print("EPOCH = ", epochs)
-		if (error < 0.001 or prev == params or epochs == 10000):
-			keepTrying = False
+		if (error < 0.001 or temp == coefficients):
+			break
+
 	print("Final params:")
-	print(params)
+	print(coefficients)
 	plt.plot(cost)
 	plt.show()
 
+	filename = 'titanic/test.csv'
+	# Load csv file
+	test = load_csv(filename, False)
+
+	# If scale = True, scale the data
+	if s:
+		test = standardization_scaling(test)
+
+	print("Executing test...")
+
+	with open('testSubmission.csv', mode='w') as submission_test:
+		test_writer = csv.writer(submission_test, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+		test_writer.writerow(['PassengerId', 'Survived'])
+		for i in range(len(test)):
+			prediction = hypothesis([1] + test[i][1:], coefficients)
+			if (prediction > 0.5):
+				test_writer.writerow([int(test[i][0]), '1'])
+			else:
+				test_writer.writerow([int(test[i][0]), '0'])
+
+	print("Test executed! Results available in testSubmission.csv")
 if __name__ == "__main__":
     main()
